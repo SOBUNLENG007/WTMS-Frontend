@@ -1,0 +1,370 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { RoleGuard } from "@/components/auth/role-guard";
+import { attendanceService } from "@/service/attendance/attendance.service";
+import type { AttendanceRecord } from "@/lib/types/attendance";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Users,
+  Download,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  BarChart3,
+  Calendar,
+  Percent,
+} from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
+
+const attendanceCfg = {
+  present: {
+    label: "Present",
+    icon: CheckCircle2,
+    color: "bg-wtms-green/10 text-wtms-green border-0",
+  },
+  absent: {
+    label: "Absent",
+    icon: XCircle,
+    color: "bg-destructive/10 text-destructive border-0",
+  },
+  late: {
+    label: "Late",
+    icon: Clock,
+    color: "bg-wtms-orange/10 text-wtms-orange border-0",
+  },
+};
+
+function AttendancePageContent() {
+  const [records, setRecords] = useState<AttendanceRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [sessionFilter, setSessionFilter] = useState("all");
+
+  // Load attendance data on mount
+  useEffect(() => {
+    loadAttendance();
+  }, []);
+
+  const loadAttendance = async () => {
+    try {
+      setLoading(true);
+      const data = await attendanceService.getAll();
+      setRecords(Array.isArray(data) ? data : []);
+    } catch (error) {
+      toast.error("Failed to load attendance data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filtered = Array.isArray(records)
+    ? sessionFilter === "all"
+      ? records
+      : records.filter((r) => r.sessionTitle === sessionFilter)
+    : [];
+
+  const totalPresent = filtered.filter((r) => r.status === "present").length;
+  const totalAbsent = filtered.filter((r) => r.status === "absent").length;
+  const totalLate = filtered.filter((r) => r.status === "late").length;
+  const participationRate =
+    filtered.length > 0
+      ? Math.round(((totalPresent + totalLate) / filtered.length) * 100)
+      : 0;
+
+  const sessions = [...new Set(records.map((r) => r.sessionTitle))];
+
+  function toggleAttendance(id: string) {
+    setRecords(
+      records.map((r) => {
+        if (r.id !== id) return r;
+        const next =
+          r.status === "present"
+            ? "absent"
+            : r.status === "absent"
+              ? "late"
+              : "present";
+
+        return { ...r, status: next as AttendanceRecord["status"] };
+      }),
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">
+            Attendance Tracking
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Record attendance per session, monitor participation rate, export
+            attendance reports, and view history per employee/session.
+          </p>
+        </div>
+
+        <div className="flex gap-2">
+          <Button variant="outline" className="gap-2 text-sm">
+            <Download className="size-4" />
+            CSV Export
+          </Button>
+          <Button variant="outline" className="gap-2 text-sm">
+            <Download className="size-4" />
+            PDF Export
+          </Button>
+        </div>
+      </div>
+
+      {/* Stats */}
+      {loading ? (
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Card key={i}>
+              <CardContent className="flex items-center gap-4 p-5">
+                <Skeleton className="size-12 rounded-xl" />
+                <div>
+                  <Skeleton className="h-8 w-12 mb-1" />
+                  <Skeleton className="h-4 w-16" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <Card>
+            <CardContent className="flex items-center gap-4 p-5">
+              <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-wtms-green">
+                <CheckCircle2 className="size-6 text-card" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-foreground">
+                  {totalPresent}
+                </p>
+                <p className="text-sm text-muted-foreground">Present</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="flex items-center gap-4 p-5">
+              <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-destructive">
+                <XCircle className="size-6 text-card" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-foreground">
+                  {totalAbsent}
+                </p>
+                <p className="text-sm text-muted-foreground">Absent</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="flex items-center gap-4 p-5">
+              <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-wtms-orange">
+                <Clock className="size-6 text-card" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-foreground">
+                  {totalLate}
+                </p>
+                <p className="text-sm text-muted-foreground">Late</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="flex items-center gap-4 p-5">
+              <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary">
+                <Percent className="size-6 text-card" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-foreground">
+                  {participationRate}%
+                </p>
+                <p className="text-sm text-muted-foreground">Participation</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Filter */}
+      <div className="flex items-center gap-3">
+        <BarChart3 className="size-4 text-muted-foreground" />
+        <Select value={sessionFilter} onValueChange={setSessionFilter}>
+          <SelectTrigger className="w-64">
+            <SelectValue placeholder="Filter by session" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Sessions</SelectItem>
+            {sessions.map((s) => (
+              <SelectItem key={s} value={s}>
+                {s}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Attendance Table */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base font-semibold text-foreground">
+              Attendance Records
+            </CardTitle>
+            <Badge variant="secondary" className="text-[10px]">
+              <Users className="mr-1 size-3" />
+              Per Employee / Session
+            </Badge>
+          </div>
+        </CardHeader>
+
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Employee
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Session
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Date
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Status
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Action
+                  </th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {filtered.map((record) => {
+                  const cfg = attendanceCfg[record.status];
+                  const StatusIcon = cfg.icon;
+
+                  return (
+                    <tr
+                      key={record.id}
+                      className="border-b border-border/50 hover:bg-muted/30 last:border-0"
+                    >
+                      <td className="px-4 py-3 font-medium text-foreground">
+                        {record.employee}
+                      </td>
+
+                      <td className="px-4 py-3 text-muted-foreground">
+                        {record.sessionTitle}
+                      </td>
+
+                      <td className="px-4 py-3 text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="size-3" />
+                          {new Date(record.date).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })}
+                        </span>
+                      </td>
+
+                      <td className="px-4 py-3">
+                        <Badge className={`text-[10px] ${cfg.color}`}>
+                          <StatusIcon className="mr-1 size-3" />
+                          {cfg.label}
+                        </Badge>
+                      </td>
+
+                      <td className="px-4 py-3">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-xs"
+                          onClick={() => toggleAttendance(record.id)}
+                        >
+                          Toggle
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Per-session summary */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold text-foreground">
+            Per-Session Participation Rate
+          </CardTitle>
+        </CardHeader>
+
+        <CardContent>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {sessions.map((session) => {
+              const sessionRecords = records.filter(
+                (r) => r.sessionTitle === session,
+              );
+              const present = sessionRecords.filter(
+                (r) => r.status === "present" || r.status === "late",
+              ).length;
+              const rate =
+                sessionRecords.length > 0
+                  ? Math.round((present / sessionRecords.length) * 100)
+                  : 0;
+
+              return (
+                <div
+                  key={session}
+                  className="space-y-2 rounded-lg border border-border p-4"
+                >
+                  <p className="text-sm font-medium text-foreground">
+                    {session}
+                  </p>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>{sessionRecords.length} records</span>
+                    <span className="font-semibold text-foreground">
+                      {rate}%
+                    </span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full bg-wtms-green transition-all"
+                      style={{ width: `${rate}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+export default function AttendancePage() {
+  return (
+    <RoleGuard allowed={["admin", "trainer"]}>
+      <AttendancePageContent />
+    </RoleGuard>
+  );
+}
