@@ -1,15 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/auth-store";
-import { LoginForm } from "./login-form";                          // ✅ local import
-import { RegisterForm } from "../register/register-form";
-import { ForgotPasswordForm } from "../forgetPassword/page";
+import { LoginForm } from "./login-form";
 import { GraduationCap, Shield, BookOpen, Users } from "lucide-react";
 
 export default function LoginPage() {
-  const [mode, setMode] = useState<"login" | "register" | "forgot">("login");
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
 
@@ -72,18 +69,10 @@ export default function LoginPage() {
         </div>
 
         <div className="w-full max-w-lg space-y-6">
-          {mode === "login" && (
-            <LoginForm
-              onSwitchToRegisterAction={() => setMode("register")}
-              onSwitchToForgotPasswordAction={() => setMode("forgot")}
-            />
-          )}
-          {mode === "register" && (
-            <RegisterForm onSwitchToLoginAction={() => setMode("login")} />
-          )}
-          {mode === "forgot" && (
-            <ForgotPasswordForm onSwitchToLogin={() => setMode("login")} />
-          )}
+          <LoginForm
+            onSwitchToRegisterAction={() => router.push("/register")}
+            onSwitchToForgotPasswordAction={() => router.push("/forgetPassword")}
+          />
         </div>
       </div>
     </div>

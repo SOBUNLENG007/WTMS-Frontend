@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Mail } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -112,9 +113,11 @@ export function ForgotPasswordForm({
 }
 
 export default function ForgotPasswordPage() {
+  const router = useRouter();
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <ForgotPasswordForm onSwitchToLogin={() => {}} />
+      <ForgotPasswordForm onSwitchToLogin={() => router.push("/login")} />
     </div>
   );
 }
